@@ -1,5 +1,8 @@
 build
+/build312/
+/build_py312/
 .*
+!.github/
 __pycache__
 *.png
 *.pyc

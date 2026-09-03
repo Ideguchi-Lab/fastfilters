@@ -1,0 +1,50 @@
+name: Python 3.12 compatibility
+
+on:
+  push:
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  build-and-smoke-test:
+    runs-on: ubuntu-22.04
+    steps:
+      - name: Check out source and submodules
+        uses: actions/checkout@v4
+        with:
+          submodules: recursive
+
+      - name: Set up Python 3.12
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install runtime dependency
+        run: python -m pip install numpy
+
+      - name: Configure
+        run: cmake -S . -B build-ci -DPYTHON_EXECUTABLE="$(command -v python)" -DCMAKE_BUILD_TYPE=Release
+
+      - name: Build Python package
+        run: cmake --build build-ci --target fastfilters_py --parallel 2
+
+      - name: Run Gaussian smoothing smoke test
+        env:
+          PYTHONPATH: build-ci/python
+          LD_LIBRARY_PATH: build-ci
+        run: |
+          python - <<'PY'
+          import numpy as np
+          import fastfilters as ff
+
+          image = np.zeros((31, 31), dtype=np.float32)
+          image[15, 15] = 1.0
+          result = ff.gaussianSmoothing(image, 1.0)
+
+          assert result.shape == (31, 31)
+          assert np.isfinite(result).all()
+          np.testing.assert_allclose(result.sum(), 1.0, rtol=1e-5)
+          assert result[15, 15] == result.max()
+          PY

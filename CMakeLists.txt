@@ -410,8 +410,15 @@ target_link_libraries(core PUBLIC fastfilters)
 set_source_files_properties(src/python/core.cxx PROPERTIES COMPILE_FLAGS "-DFF_VERSION_STR=\\\"${FF_VERSION}\\\"")
 
 if(NOT DEFINED FF_INSTALL_DIR OR FF_INSTALL_DIR MATCHES "^$")
-  execute_process(COMMAND ${PYTHON_EXECUTABLE} -c "from distutils.sysconfig import *; print(get_python_lib(1))" OUTPUT_VARIABLE PYTHON_SITE_PACKAGES OUTPUT_STRIP_TRAILING_WHITESPACE)
-  FILE(TO_CMAKE_PATH ${PYTHON_SITE_PACKAGES} FF_INSTALL_DIR)
+  execute_process(
+    COMMAND ${PYTHON_EXECUTABLE} -c "import sysconfig; print(sysconfig.get_path('platlib'))"
+    OUTPUT_VARIABLE PYTHON_SITE_PACKAGES
+    OUTPUT_STRIP_TRAILING_WHITESPACE
+    RESULT_VARIABLE PYTHON_SITE_PACKAGES_RESULT)
+  if(NOT PYTHON_SITE_PACKAGES_RESULT EQUAL 0 OR PYTHON_SITE_PACKAGES MATCHES "^$")
+    message(FATAL_ERROR "Unable to determine the Python platform library directory")
+  endif()
+  FILE(TO_CMAKE_PATH "${PYTHON_SITE_PACKAGES}" FF_INSTALL_DIR)
 endif()
 
 set(FF_INSTALL_DIR ${FF_INSTALL_DIR} CACHE PATH "install directory for ff python extension." FORCE)
